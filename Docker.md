@@ -25,12 +25,14 @@
 
 check:
 `docker --version`
+
 ---
 ## Run image with custom name
 `docker run -d -p host_port:container:port <Image name> --name CUSTOM_NAME`
 
 `-v = volume mount`
 `-e = environment variable`
+
 ---
 ## Delete Docker Container
 `docker ps (Find Container)`
