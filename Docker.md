@@ -1,5 +1,8 @@
 # Docker Notes
-## Docker Debian install
+
+---
+
+### Docker Debian install
 
 1.  Update package index
 `sudo apt-get update`
@@ -27,19 +30,26 @@ check:
 `docker --version`
 
 ---
-## Run image with custom name
+
+### Run image with custom name
 `docker run -d -p host_port:container:port <Image name> --name CUSTOM_NAME`
 
 `-v = volume mount`
 `-e = environment variable`
 
 ---
-## Delete Docker Container
+
+### Delete Docker Container
 `docker ps (Find Container)`
 
 `docker stop [container name]`
 
-`docker rm [container name]\`
+`docker rm [container name]`
 
 `docker ps -a`
 
+---
+
+### Copy file from host to container (this can be used vice versa)
+
+`docker cp /path/to/local/file container_name:/path/in/container`
