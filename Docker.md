@@ -53,3 +53,9 @@ check:
 ### Copy file from host to container (this can be used vice versa)
 
 `docker cp /path/to/local/file container_name:/path/in/container`
+
+### Docker inspect command for checking issues on containers and accessing container logs basic
+
+`docker inspect <Container Name>`
+
+`docker logs -t container_name_or_id` - The -t gives timestamp
