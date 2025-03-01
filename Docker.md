@@ -37,6 +37,8 @@ check:
 `-v = volume mount`
 `-e = environment variable`
 
+The default start command can also be overwritten by adding it to the end of the command
+
 ---
 
 ### Delete Docker Container
@@ -59,3 +61,11 @@ check:
 `docker inspect <Container Name>`
 
 `docker logs -t container_name_or_id` - The -t gives timestamp
+
+### Docker save command can be used to save an image to a tar file
+
+`docker save -o ~/backups/multiple-images.tar image1:tag1 image2:tag2`
+
+### Docker load can be used to load the images thereafter (refer to save command)
+
+`docker load -i /path/to/directory/your_filename.tar`
