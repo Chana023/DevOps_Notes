@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-2 # Change name to requirement
+  labels:
+    env: production # Change label to requirement
+spec:
+  containers:
+    - name: nginx # Name the container 
+      image: nginx # Specify an image
