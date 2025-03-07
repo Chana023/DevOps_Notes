@@ -79,6 +79,9 @@
 
 Combining these options allows quick generation of resource definition files for modification before actual creation.
 
+---
+# Imperative commands
+
 ## Pod
 
 ### Create an NGINX Pod
