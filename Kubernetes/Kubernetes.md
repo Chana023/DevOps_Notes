@@ -72,3 +72,80 @@
 - `kubectl create deployment --image=nginx nginx --dry-run=client -o yaml > nginx-deployment.yaml` - Generate Deployment YAML file (-o yaml). Don’t create it(–dry-run) and save it to a file.
 
 - `kubectl create -f nginx-deployment.yaml` - Make necessary changes to the file (for example, adding more replicas) and then create the deployment.
+
+## Useful Options
+- `--dry-run=client`: Simulates resource creation without actually creating it.
+- `-o yaml`: Outputs the resource definition in YAML format.
+
+Combining these options allows quick generation of resource definition files for modification before actual creation.
+
+## Pod
+
+### Create an NGINX Pod
+```sh
+kubectl run nginx --image=nginx
+```
+
+### Generate Pod Manifest YAML (without creating it)
+```sh
+kubectl run nginx --image=nginx --dry-run=client -o yaml
+```
+
+## Deployment
+
+### Create a Deployment
+```sh
+kubectl create deployment --image=nginx nginx
+```
+
+### Generate Deployment YAML (without creating it)
+```sh
+kubectl create deployment --image=nginx nginx --dry-run=client -o yaml
+```
+
+### Generate Deployment with 4 Replicas
+```sh
+kubectl create deployment nginx --image=nginx --replicas=4
+```
+
+### Scale an Existing Deployment
+```sh
+kubectl scale deployment nginx --replicas=4
+```
+
+### Save Deployment YAML for Modification
+```sh
+kubectl create deployment nginx --image=nginx --dry-run=client -o yaml > nginx-deployment.yaml
+```
+
+Modify `nginx-deployment.yaml` to set replicas or other parameters before creating the deployment.
+
+## Service
+
+### Create a ClusterIP Service for Redis (Port 6379)
+```sh
+kubectl expose pod redis --port=6379 --name redis-service --dry-run=client -o yaml
+```
+
+Alternative:
+```sh
+kubectl create service clusterip redis --tcp=6379:6379 --dry-run=client -o yaml
+```
+*Note: This assumes selectors as `app=redis`, so modify selectors if needed.*
+
+### Create a NodePort Service for NGINX (Port 80 → NodePort 30080)
+
+```sh
+kubectl expose pod nginx --type=NodePort --port=80 --name=nginx-service --dry-run=client -o yaml
+```
+*Note: This automatically selects labels but does not allow setting a node port manually.*
+
+Alternative:
+```sh
+kubectl create service nodeport nginx --tcp=80:80 --node-port=30080 --dry-run=client -o yaml
+```
+*Note: This does not use pod labels as selectors.*
+
+### Recommendation
+Use `kubectl expose` to generate a service definition and manually specify the `nodePort` before applying it.
+
