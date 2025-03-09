@@ -2,7 +2,7 @@
 
 ## Basic Kubernetes Commands
 
-```md
+
 ### Cluster Info & Context
 ```sh
 kubectl cluster-info  # Get cluster info
