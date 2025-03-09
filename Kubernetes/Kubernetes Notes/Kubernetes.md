@@ -126,30 +126,6 @@ kubectl top node  # Show resource usage of nodes
 ```
 
 
-## Taints and Tolerations
-
-### Taints
-
-Add a taint to a node
-```sh
-kubectl taint nodes node-name key=value:taint-effect
-```
-- NoSchedule - Pods won't be scheduled on the node unless they tolerate the taint
-- PreferNoSchedule - The system will try to avoid placing pods on the node
-- NoExecute -  Existing pods will be evicted if they don't tolerate the taint
-
-Remove a taint from a node
-```sh
-kubectl taint nodes <node-name> <key>[=<value>]:<effect>-
-```
-
-### Tolerations
-
-```sh
-kubectl taint nodes <node-name> key=value:effect
-```
-
-
 ### Useful Options
 - `--dry-run=client`: Simulates resource creation without actually creating it.
 - `-o yaml`: Outputs the resource definition in YAML format.
