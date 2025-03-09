@@ -48,6 +48,7 @@ kubectl label node <node-name> role=worker  # Add a label to a node
 kubectl label node <node-name> role-  # Remove a label from a node
 ```
 
+---
 
 ## Taints and Tolerations
 
@@ -71,3 +72,56 @@ kubectl taint nodes <node-name> <key>[=<value>]:<effect>-
 ```sh
 kubectl taint nodes <node-name> key=value:effect
 ```
+
+---
+
+## Node Selectors
+
+Limited Usage, probably best to use Node Affinity 
+```sh
+kubectl label nodes <node-name> <label-key>=<label-value>
+```
+
+## Node Afffinity
+
+Node affinity is a way to constrain pods to run on specific nodes based on labels.
+
+### Viewing Node Labels
+```sh
+kubectl get nodes --show-labels  # List all nodes with their labels
+```
+```sh
+kubectl describe node <node-name>  # Get details of a specific node, including labels
+```
+
+### Adding & Removing Node Labels
+```sh
+kubectl label node <node-name> disktype=ssd  # Add a label to a node
+```
+```sh
+kubectl label node <node-name> disktype-  # Remove a label from a node
+```
+
+### Example: Applying Node Affinity in a Pod Spec
+In a pod specification (`pod.yaml`), you can define node affinity like this:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: disktype
+            operator: In
+            values:
+            - ssd
+  containers:
+  - name: my-container
+    image: nginx
+```
+
