@@ -125,3 +125,88 @@ spec:
     image: nginx
 ```
 
+## Resource Requirements and Limits
+
+Resource requests and limits help manage CPU and memory usage for containers.
+
+### Viewing Resource Usage
+```sh
+kubectl top pod  # Show CPU and memory usage of pods
+```
+```sh
+kubectl top node  # Show CPU and memory usage of nodes
+```
+
+### Example: Defining Resource Requests & Limits in a Pod Spec
+In a pod specification (`pod.yaml`), you can define requests and limits like this:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: my-container
+    image: nginx
+    resources:
+      requests:
+        memory: "128Mi"  # Minimum memory the container requires
+        cpu: "250m"  # Minimum CPU the container requires (250 millicores)
+      limits:
+        memory: "256Mi"  # Maximum memory the container can use
+        cpu: "500m"  # Maximum CPU the container can use (500 millicores)
+```
+
+#### Checking Resource Requests & Limits
+```sh
+kubectl get pod my-pod -o yaml | grep resources -A 4  # View resource requests & limits in YAML
+```
+
+## Limit Range 
+
+A **LimitRange** object is used to enforce default resource requests and limits within a namespace.
+
+### Viewing LimitRange in a Namespace
+```sh
+kubectl get limitrange -n <namespace>  # List LimitRange objects in a namespace
+```
+```sh
+kubectl describe limitrange <limitrange-name> -n <namespace>  # View details of a LimitRange
+```
+
+### Example: Defining a LimitRange
+In a LimitRange specification (`limitrange.yaml`), you can define default CPU and memory limits:
+
+```yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: resource-limits
+  namespace: my-namespace
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: "500m"  # Default CPU limit
+      memory: "512Mi"  # Default memory limit
+    defaultRequest:
+      cpu: "250m"  # Default CPU request
+      memory: "256Mi"  # Default memory request
+    max:
+      cpu: "1"  # Max CPU allowed per container
+      memory: "1Gi"  # Max memory allowed per container
+    min:
+      cpu: "100m"  # Min CPU required per container
+      memory: "128Mi"  # Min memory required per container
+```
+
+#### Checking if Limits Apply to New Pods
+```sh
+kubectl describe limitrange resource-limits -n my-namespace  # Verify the applied LimitRange
+```
+
+#### Deleting the LimitRange
+```sh
+kubectl delete limitrange resource-limits -n my-namespace  # Remove the LimitRange
+```
