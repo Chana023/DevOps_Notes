@@ -57,10 +57,35 @@
 - `kubectl get all` – Show all resources in the namespace  
 - `kubectl top pod` – Show resource usage of pods  
 - `kubectl top node` – Show resource usage of nodes  
-j
+
+## Taints and Tolerations
+
+### Taints
+
+Add a taint to a node
+```sh
+kubectl taint nodes node-name key=value:taint-effect
+```
+- NoSchedule - Pods won't be scheduled on the node unless they tolerate the taint
+- PreferNoSchedule - The system will try to avoid placing pods on the node
+- NoExecute -  Existing pods will be evicted if they don't tolerate the taint
+
+Remove a taint from a node
+```sh
+kubectl taint nodes <node-name> <key>[=<value>]:<effect>-
+```
+
+### Tolerations
+
+```sh
+kubectl taint nodes <node-name> key=value:effect
+```
+
+
 ### Useful Options
 - `--dry-run=client`: Simulates resource creation without actually creating it.
 - `-o yaml`: Outputs the resource definition in YAML format.
+- `--selector` or `-l`: allows you to select based on labels placed on pods
 
 Combining these options allows quick generation of resource definition files for modification before actual creation.
 
