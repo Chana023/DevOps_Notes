@@ -310,3 +310,113 @@ sudo vi /etc/kubernetes/manifests/static-pod.yaml
   kubectl logs static-pod-example -n kube-system
   ```
 
+## Kubernetes Scheduler
+
+## What is the Kubernetes Scheduler?
+The **Kubernetes Scheduler** is responsible for assigning pods to nodes based on resource availability, constraints, and policies.
+
+## Key Features
+- Evaluates **node resources** (CPU, memory, taints, affinity, etc.).
+- Uses **scheduling policies** to determine the best node for a pod.
+- Can be **customized** or replaced with a custom scheduler.
+
+---
+
+## Important Commands
+
+### View the Current Scheduler
+```sh
+kubectl get pods -n kube-system | grep kube-scheduler
+```
+
+### View Scheduler Logs
+```sh
+kubectl logs -n kube-system kube-scheduler-<node-name>
+```
+
+### Check Scheduler Configuration
+```sh
+kubectl describe pod kube-scheduler-<node-name> -n kube-system
+```
+
+### View Events Related to Scheduling
+```sh
+kubectl get events --sort-by=.metadata.creationTimestamp
+```
+
+---
+
+## Sample Static Pod YAML for Kubernetes Scheduler
+
+If you are using a **static pod** for the scheduler, the configuration file is typically found in:
+```sh
+/etc/kubernetes/manifests/kube-scheduler.yaml
+```
+
+Example:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+    - name: kube-scheduler
+      image: k8s.gcr.io/kube-scheduler:v1.28.0
+      command:
+        - kube-scheduler
+        - --config=/etc/kubernetes/scheduler-config.yaml
+      volumeMounts:
+        - mountPath: /etc/kubernetes
+          name: config-volume
+  volumes:
+    - name: config-volume
+      hostPath:
+        path: /etc/kubernetes
+```
+
+---
+
+## Custom Scheduler Deployment
+
+1. **Create a Custom Scheduler Pod**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: custom-scheduler
+  namespace: kube-system
+spec:
+  containers:
+    - name: custom-scheduler
+      image: k8s.gcr.io/kube-scheduler:v1.28.0 # Check version here
+      command:
+        - kube-scheduler
+        - --config=/etc/kubernetes/custom-scheduler-config.yaml
+```
+
+2. **Apply the Custom Scheduler**
+```sh
+kubectl apply -f custom-scheduler.yaml
+```
+
+3. **Schedule Pods Using the Custom Scheduler**
+Modify the pod specification to use the custom scheduler:
+```yaml
+spec:
+  schedulerName: custom-scheduler
+```
+
+---
+
+## Important Notes
+- The default scheduler binary is **`kube-scheduler`**.
+- Custom schedulers can be deployed as a **separate pod**.
+- Logs help diagnose why a pod is not getting scheduled.
+- To disable the default scheduler, remove `kube-scheduler.yaml` from `/etc/kubernetes/manifests/` (for static pods).
+
+```sh
+rm /etc/kubernetes/manifests/kube-scheduler.yaml
+```
+
