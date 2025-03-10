@@ -210,3 +210,56 @@ kubectl describe limitrange resource-limits -n my-namespace  # Verify the applie
 ```sh
 kubectl delete limitrange resource-limits -n my-namespace  # Remove the LimitRange
 ```
+
+## Daemon Sets
+
+### What is a DaemonSet?
+A **DaemonSet** ensures that a copy of a specific Pod runs on all (or some) nodes in a cluster. It is used for node-level tasks like logging, monitoring, or networking.
+
+### List DaemonSets
+```sh
+kubectl get daemonsets
+kubectl get ds
+```
+
+### Describe a DaemonSet
+```sh
+kubectl describe daemonset <daemonset-name>
+```
+
+### Delete a DaemonSet
+```sh
+kubectl delete daemonset <daemonset-name>
+```
+
+---
+
+## Sample DaemonSet YAML
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: example-daemonset
+  labels:
+    app: example
+spec:
+  selector:
+    matchLabels:
+      app: example
+  template:
+    metadata:
+      labels:
+        app: example
+    spec:
+      containers:
+        - name: example-container
+          image: busybox
+          command: ["/bin/sh", "-c", "while true; do echo Hello from DaemonSet; sleep 10; done"]
+```
+
+## Important Notes
+- A DaemonSet ensures that each node has exactly **one** instance of the Pod.
+- If new nodes are added, the DaemonSet automatically schedules Pods on them.
+- Deleting a DaemonSet will remove all its Pods.
+- Use **nodeSelector** or **affinity** to run Pods on specific nodes.
