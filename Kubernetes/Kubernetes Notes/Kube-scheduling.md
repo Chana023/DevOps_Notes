@@ -263,3 +263,50 @@ spec:
 - If new nodes are added, the DaemonSet automatically schedules Pods on them.
 - Deleting a DaemonSet will remove all its Pods.
 - Use **nodeSelector** or **affinity** to run Pods on specific nodes.
+
+## Static Pods
+
+## What are Static Pods?
+**Static Pods** are managed directly by the **Kubelet**, not the Kubernetes API Server. They are useful for running critical system-level components on specific nodes.
+
+## Key Characteristics
+- Defined in a **YAML file** stored on the node (`/etc/kubernetes/manifests/`).
+- **Kubelet** ensures they are always running.
+- Do **not** use a **ReplicaSet** or **Scheduler**.
+- Visible with `kubectl get pods --all-namespaces` but **not** managed via `kubectl apply/delete`.
+
+---
+
+## Important Commands
+
+### Find Static Pod YAML File (on the node)
+```sh
+ls /etc/kubernetes/manifests/
+```
+
+### Delete a Static Pod
+```sh
+rm /etc/kubernetes/manifests/static-pod.yaml
+```
+> **Note**: The pod will be removed automatically by Kubelet.
+
+---
+
+### Deploying a Static Pod
+1. **Save the YAML file** on the node in `/etc/kubernetes/manifests/`
+```sh
+sudo vi /etc/kubernetes/manifests/static-pod.yaml
+```
+2. **Kubelet automatically starts the pod**.
+
+---
+
+## Important Notes
+- Used for **critical system components** like control plane services.
+- If the file is **deleted**, Kubelet removes the pod.
+- No **ReplicaSets, Deployments, or Services** can manage them.
+- Logs can be viewed using:
+  ```sh
+  kubectl logs static-pod-example -n kube-system
+  ```
+
