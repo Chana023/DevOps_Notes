@@ -420,3 +420,125 @@ spec:
 rm /etc/kubernetes/manifests/kube-scheduler.yaml
 ```
 
+## Admission Controllers
+
+## What are Admission Controllers?
+**Admission Controllers** are plugins that intercept API requests before they are persisted in etcd. They can **validate, mutate, or reject** resource creation/modification requests.
+
+## Types of Admission Controllers
+1. **Mutating Admission Controllers** – Modify requests before they are processed.
+2. **Validating Admission Controllers** – Approve or deny requests based on policies.
+
+---
+
+## Important Commands
+
+### List Enabled Admission Controllers
+```sh
+kubectl api-resources --verbs=list | grep admission
+```
+
+### Check Admission Controller Configuration (on control plane node)
+```sh
+cat /etc/kubernetes/manifests/kube-apiserver.yaml | grep enable-admission-plugins
+```
+
+### View Mutating Webhook Configurations
+```sh
+kubectl get mutatingwebhookconfiguration
+kubectl describe mutatingwebhookconfiguration <name>
+```
+
+### View Validating Webhook Configurations
+```sh
+kubectl get validatingwebhookconfiguration
+kubectl describe validatingwebhookconfiguration <name>
+```
+
+---
+
+## Enabling Admission Controllers
+
+Admission controllers are configured in the **Kube API Server** using the `--enable-admission-plugins` flag in:
+```sh
+/etc/kubernetes/manifests/kube-apiserver.yaml
+```
+
+Example:
+```yaml
+spec:
+  containers:
+    - name: kube-apiserver
+      command:
+        - kube-apiserver
+        - --enable-admission-plugins=NamespaceLifecycle,LimitRanger,MutatingAdmissionWebhook,ValidatingAdmissionWebhook
+```
+> **Note:** Restart the API server after changes.
+
+---
+
+## Sample Mutating Webhook Configuration
+
+```yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: example-mutating-webhook
+webhooks:
+  - name: example.webhook.k8s.io
+    clientConfig:
+      service:
+        name: example-webhook-service
+        namespace: default
+        path: "/mutate"
+    rules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        resources:   ["pods"]
+        operations:  ["CREATE"]
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+```
+
+---
+
+## Sample Validating Webhook Configuration
+
+```yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: example-validating-webhook
+webhooks:
+  - name: validate.webhook.k8s.io
+    clientConfig:
+      service:
+        name: example-webhook-service
+        namespace: default
+        path: "/validate"
+    rules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        resources:   ["pods"]
+        operations:  ["CREATE", "UPDATE"]
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+```
+
+---
+
+## Important Notes
+- **Mutating webhooks** modify resource definitions **before** validation.
+- **Validating webhooks** enforce policies **after** mutation but **before** persistence.
+- Admission controllers are **essential** for security, resource control, and compliance.
+- Webhooks require a running **webhook server** that processes requests.
+
+### **Troubleshooting Webhooks**
+- View webhook logs using:
+  ```sh
+  kubectl logs -l app=webhook-service -n default
+  ```
+- If a webhook is blocking deployments, you can temporarily **disable it**:
+  ```sh
+  kubectl delete mutatingwebhookconfiguration example-mutating-webhook
+  ```
