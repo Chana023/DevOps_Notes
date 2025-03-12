@@ -266,3 +266,122 @@ kubectl exec -it <pod-name> -- printenv
 - **Downward API** is useful for injecting pod metadata dynamically.
 - **Use `envFrom` for bulk loading** from ConfigMaps/Secrets, and `env` for specific variables.
 - **Avoid hardcoding sensitive values**—use Secrets instead.
+
+
+## Init Containers in Kubernetes
+
+### Overview
+Init containers are **special containers** that run before the main application container in a Pod. They are useful for:
+- Running setup tasks (e.g., waiting for dependencies).
+- Fetching configurations or secrets before the app starts.
+- Performing database migrations.
+
+---
+
+### 1. Defining an Init Container in a Pod
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-container-demo
+spec:
+  initContainers:
+    - name: init-container
+      image: busybox
+      command: ["sh", "-c", "echo Initializing... && sleep 5"]
+  containers:
+    - name: app-container
+      image: nginx
+```
+
+#### Explanation:
+- **`initContainers`** runs **before** the main container (`app-container`).
+- The Init Container prints "Initializing..." and sleeps for 5 seconds before the Nginx container starts.
+
+---
+
+### 2. Using an Init Container to Wait for a Service
+
+If an application depends on another service (e.g., a database), an Init Container can wait until it is ready.
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-container-wait
+spec:
+  initContainers:
+    - name: wait-for-db
+      image: busybox
+      command: ["sh", "-c", "until nc -z db-service 5432; do echo Waiting for DB; sleep 2; done"]
+  containers:
+    - name: app-container
+      image: nginx
+```
+
+#### Explanation:
+- The **Init Container** keeps checking if the **database service** (`db-service:5432`) is reachable.
+- The **main app (Nginx)** starts **only after** the database is accessible.
+
+---
+
+### 3. Using an Init Container to Prepare a Shared Volume
+
+An Init Container can create necessary files before the main container runs.
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-container-volume
+spec:
+  volumes:
+    - name: shared-data
+      emptyDir: {}
+
+  initContainers:
+    - name: init-container
+      image: busybox
+      command: ["sh", "-c", "echo 'Hello from Init' > /data/message"]
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data
+
+  containers:
+    - name: app-container
+      image: busybox
+      command: ["sh", "-c", "cat /data/message && sleep 3600"]
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data
+```
+
+#### Explanation:
+- The **Init Container** writes "Hello from Init" into a file inside a shared volume (`/data/message`).
+- The **main container** reads the message and prints it.
+
+---
+
+### 4. Running a Pod with an Init Container via `kubectl`
+```sh
+kubectl apply -f init-container-demo.yaml
+kubectl logs init-container-demo -c init-container
+kubectl logs init-container-demo -c app-container
+```
+- View logs for the Init Container **before** the main container starts.
+
+---
+
+### 5. Checking Init Container Status
+```sh
+kubectl get pod init-container-demo -o jsonpath="{.status.initContainerStatuses[*].state}"
+```
+
+---
+
+### Important Notes
+- **Init containers must complete successfully** before the main container starts.
+- If an Init Container **fails**, Kubernetes restarts the Pod.
+- **Multiple Init Containers** run sequentially in the order they are defined.
+- **Use shared volumes** to pass data between Init Containers and app containers.
