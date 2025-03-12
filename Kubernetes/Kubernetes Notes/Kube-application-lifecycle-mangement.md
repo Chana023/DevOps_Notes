@@ -385,3 +385,157 @@ kubectl get pod init-container-demo -o jsonpath="{.status.initContainerStatuses[
 - If an Init Container **fails**, Kubernetes restarts the Pod.
 - **Multiple Init Containers** run sequentially in the order they are defined.
 - **Use shared volumes** to pass data between Init Containers and app containers.
+
+
+## Autoscaling in Kubernetes
+
+### Overview
+Kubernetes provides **autoscaling** to dynamically adjust resources based on demand:
+1. **Horizontal Pod Autoscaler (HPA)** - Scales the number of Pods.
+2. **Vertical Pod Autoscaler (VPA)** - Adjusts CPU & memory of existing Pods.
+3. **Cluster Autoscaler** - Scales the number of worker nodes.
+
+---
+
+### 1. Horizontal Pod Autoscaler (HPA)
+
+#### Create a Deployment
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          resources:
+            requests:
+              cpu: "250m"
+            limits:
+              cpu: "500m"
+```
+
+#### Create an HPA for the Deployment
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nginx-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx-deployment
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+```
+#### Explanation:
+- Scales **between 1 and 5 replicas**.
+- **Adds Pods** when CPU usage **exceeds 50%**.
+
+#### Apply and Verify:
+```sh
+kubectl apply -f nginx-deployment.yaml
+kubectl apply -f nginx-hpa.yaml
+kubectl get hpa
+kubectl describe hpa nginx-hpa
+```
+
+#### Generate Load to Test Autoscaling:
+```sh
+kubectl run load-generator --image=busybox -- /bin/sh -c "while true; do wget -q -O- http://nginx-service; done"
+```
+
+---
+
+### 2. Vertical Pod Autoscaler (VPA)
+
+#### Install VPA (if not installed)
+```sh
+kubectl apply -f https://github.com/kubernetes/autoscaler/releases/latest/download/vertical-pod-autoscaler.yaml
+```
+
+#### Create a VPA Resource
+```yaml
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: nginx-vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx-deployment
+  updatePolicy:
+    updateMode: "Auto"
+```
+
+#### Explanation:
+- **VPA automatically adjusts CPU & memory** requests/limits.
+- **Modes**: `Auto`, `Off`, or `Initial`.
+
+#### Apply and Verify:
+```sh
+kubectl apply -f nginx-vpa.yaml
+kubectl describe vpa nginx-vpa
+```
+
+---
+
+### 3. Cluster Autoscaler (Node Autoscaling)
+
+#### Install Cluster Autoscaler
+```sh
+kubectl apply -f https://github.com/kubernetes/autoscaler/releases/latest/download/cluster-autoscaler-autodiscover.yaml
+```
+
+#### Verify Scaling:
+```sh
+kubectl get nodes
+kubectl describe nodes
+```
+
+---
+
+### 4. Checking Autoscaler Metrics
+
+#### View HPA Metrics:
+```sh
+kubectl get hpa
+kubectl describe hpa nginx-hpa
+```
+
+#### View VPA Recommendations:
+```sh
+kubectl describe vpa nginx-vpa
+```
+
+#### View Cluster Autoscaler Logs:
+```sh
+kubectl logs -f deployment/cluster-autoscaler -n kube-system
+```
+
+---
+
+### Important Notes
+- **HPA requires Metrics Server** (`kubectl top pods` should work).
+- **VPA is best for applications with fluctuating CPU/memory needs**.
+- **Cluster Autoscaler only works on cloud providers** (e.g., AWS, GCP, Azure).
+- **Use HPA and VPA together carefully** (HPA scales Pods, VPA modifies resources).
