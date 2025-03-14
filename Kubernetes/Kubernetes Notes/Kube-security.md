@@ -428,3 +428,173 @@ kubectl config delete-user my-user
 - **Avoid modifying the kubeconfig manually; use `kubectl config set-*` commands.**
 - **Always use `export KUBECONFIG=<file>` for temporary kubeconfig changes.**
 - **Service accounts should be used for automation and restricted access.**
+
+## Overview Kubernetes API Groups
+Kubernetes API groups organize related API objects, making it easier to extend functionality without affecting core components. The **API server** exposes resources under different groups.
+
+### **Types of API Groups**
+1. **Core API Group (`apiVersion: v1`)**
+2. **Named API Groups (e.g., `apps`, `batch`, `rbac.authorization.k8s.io`)**
+3. **Custom Resource Definitions (CRDs) (`apiextensions.k8s.io`)**
+
+---
+
+## 1. **Core API Group (`apiVersion: v1`)**
+The **Core API** has no group prefix and contains essential Kubernetes objects.
+
+### **Example Core API Resources**
+```sh
+kubectl api-resources --api-group=""
+```
+**Common Core API Objects:**
+- Pods (`kind: Pod`)
+- Services (`kind: Service`)
+- ConfigMaps (`kind: ConfigMap`)
+- Secrets (`kind: Secret`)
+- Namespaces (`kind: Namespace`)
+
+### **Example YAML**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+    - name: nginx
+      image: nginx
+```
+
+---
+
+## 2. **Named API Groups**
+Named API groups organize Kubernetes resources for better structure.
+
+### **Listing API Groups**
+```sh
+kubectl api-versions
+```
+
+### **Common API Groups**
+| API Group                        | Example Resource         | Usage |
+|-----------------------------------|-------------------------|----------------|
+| `apps`                            | `Deployment`            | Manages workloads |
+| `batch`                           | `Job`, `CronJob`        | Handles batch jobs |
+| `autoscaling`                     | `HorizontalPodAutoscaler` | Manages scaling |
+| `rbac.authorization.k8s.io`       | `Role`, `RoleBinding`   | Role-based access control |
+| `networking.k8s.io`               | `Ingress`, `NetworkPolicy` | Network management |
+| `apiextensions.k8s.io`            | `CustomResourceDefinition` | Extends Kubernetes API |
+
+---
+
+## 3. **Example YAML for Named API Groups**
+
+### **Deployment (API Group: `apps/v1`)**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-container
+          image: nginx
+```
+
+### **Ingress (API Group: `networking.k8s.io/v1`)**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+spec:
+  rules:
+    - host: my-app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-service
+                port:
+                  number: 80
+```
+
+---
+
+## 4. **Custom Resource Definitions (CRDs)**
+CRDs extend Kubernetes with **custom API resources**.
+
+### **List Installed CRDs**
+```sh
+kubectl get crds
+```
+
+### **Example CRD Definition (`apiextensions.k8s.io/v1`)**
+```yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: myresources.example.com
+spec:
+  group: example.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  scope: Namespaced
+  names:
+    plural: myresources
+    singular: myresource
+    kind: MyResource
+```
+
+---
+
+## 5. **Interacting with API Groups**
+### **Get Available API Resources**
+```sh
+kubectl api-resources
+```
+
+### **Check API Versions for a Specific Resource**
+```sh
+kubectl explain deployment --api-version=apps/v1
+```
+
+### **Accessing API Directly with `kubectl get`**
+```sh
+kubectl get deployments.v1.apps
+kubectl get jobs.batch
+kubectl get networkpolicies.networking.k8s.io
+```
+
+---
+
+## 6. **Checking and Debugging API Calls**
+### **Get Raw API Response**
+```sh
+kubectl get --raw /apis/apps/v1
+```
+
+### **Describe API Group Details**
+```sh
+kubectl explain pod --api-version=v1
+```
+
+---
+
+## Important Notes
+- **Core API objects do not have a group (`apiVersion: v1`).**
+- **API groups are versioned (`v1`, `v1beta1`) to support upgrades.**
+- **Use `kubectl api-resources` to list all available objects and groups.**
