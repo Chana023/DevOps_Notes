@@ -1163,3 +1163,218 @@ kubectl label namespace default pod-security.kubernetes.io/enforce=restricted
 | **Admission Controllers**   | Enforces security policies |
 
 ---
+
+## Overview Kubernetes Security Contexts
+A **Security Context** in Kubernetes defines **privileges and access controls** for pods or containers. It ensures that workloads run with **least privilege**, reducing security risks.
+
+---
+
+## 1. **Security Context in Pods and Containers**
+Security contexts can be applied at:
+- **Pod Level** → Affects all containers in the pod.
+- **Container Level** → Overrides the pod-level settings.
+
+### **Example: Pod-Level Security Context**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-pod
+spec:
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+  containers:
+    - name: secure-container
+      image: nginx
+```
+
+---
+
+## 2. **Key Security Context Fields**
+| Field                 | Description |
+|-----------------------|-------------|
+| `runAsUser`          | Runs the container as a specific **user ID (UID)**. |
+| `runAsGroup`         | Runs the container as a specific **group ID (GID)**. |
+| `runAsNonRoot`       | Ensures the container does not run as the root user. |
+| `fsGroup`            | Sets the **file system group** for mounted volumes. |
+| `allowPrivilegeEscalation` | Prevents privilege escalation (e.g., `sudo`). |
+| `privileged`         | Grants full access to the host system (avoid!). |
+| `readOnlyRootFilesystem` | Ensures the container file system is **read-only**. |
+| `capabilities`       | Grants or removes **Linux capabilities** for containers. |
+| `seccompProfile`     | Restricts **syscalls** to minimize attack surface. |
+
+---
+
+## 3. **Restricting Root Access**
+### **Example: Preventing Root Execution**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: non-root-pod
+spec:
+  securityContext:
+    runAsNonRoot: true
+  containers:
+    - name: secure-container
+      image: nginx
+      securityContext:
+        runAsUser: 1000
+```
+
+---
+
+## 4. **Preventing Privilege Escalation**
+Blocks `setuid` or `setgid` binaries from elevating privileges.
+
+### **Example: Denying Privilege Escalation**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: restricted-pod
+spec:
+  containers:
+    - name: secure-container
+      image: nginx
+      securityContext:
+        allowPrivilegeEscalation: false
+```
+
+---
+
+## 5. **Using Read-Only Filesystem**
+Prevents malware from modifying the container filesystem.
+
+### **Example: Enforcing Read-Only Filesystem**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: readonly-fs-pod
+spec:
+  containers:
+    - name: secure-container
+      image: nginx
+      securityContext:
+        readOnlyRootFilesystem: true
+```
+
+---
+
+## 6. **Dropping Linux Capabilities**
+Reduces the container’s privileges by removing unnecessary Linux capabilities.
+
+### **Example: Drop Unnecessary Capabilities**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: drop-caps-pod
+spec:
+  containers:
+    - name: secure-container
+      image: nginx
+      securityContext:
+        capabilities:
+          drop:
+            - ALL
+```
+
+---
+
+## 7. **Restricting Privileged Mode**
+Avoid using **privileged** containers as they have full access to the host.
+
+### **Example: Denying Privileged Containers**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-privileged-pod
+spec:
+  containers:
+    - name: secure-container
+      image: nginx
+      securityContext:
+        privileged: false
+```
+
+---
+
+## 8. **Setting File System Permissions**
+Ensures that volumes are accessible only to specific users/groups.
+
+### **Example: Setting `fsGroup` for Mounted Volumes**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fsgroup-pod
+spec:
+  securityContext:
+    fsGroup: 2000
+  containers:
+    - name: secure-container
+      image: nginx
+```
+
+---
+
+## 9. **Enforcing Seccomp Profiles**
+Limits system calls available to the container.
+
+### **Example: Using a Seccomp Profile**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: seccomp-pod
+spec:
+  containers:
+    - name: secure-container
+      image: nginx
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+```
+
+---
+
+## 10. **Verifying Security Contexts**
+### **Check Security Contexts of a Pod**
+```sh
+kubectl get pod secure-pod -o yaml
+```
+
+### **Describe a Pod for Security Settings**
+```sh
+kubectl describe pod secure-pod
+```
+
+---
+
+## **Best Practices**
+✅ **Always run containers as a non-root user.**  
+✅ **Use `allowPrivilegeEscalation: false` to block privilege escalation.**  
+✅ **Enable `readOnlyRootFilesystem` to prevent file modifications.**  
+✅ **Drop unnecessary Linux capabilities using `capabilities.drop`.**  
+✅ **Restrict privileged mode (`privileged: false`).**  
+✅ **Use seccomp profiles to limit available syscalls.**  
+
+---
+
+## Summary
+| Security Measure           | Purpose |
+|----------------------------|----------------------------------|
+| **`runAsNonRoot`**         | Ensures the container runs as a non-root user. |
+| **`allowPrivilegeEscalation: false`** | Prevents privilege escalation via `setuid` binaries. |
+| **`privileged: false`**    | Blocks full host access for containers. |
+| **`readOnlyRootFilesystem: true`** | Prevents modifications to the filesystem. |
+| **`fsGroup`**              | Ensures mounted volumes have proper permissions. |
+| **`capabilities.drop`**    | Removes unnecessary Linux capabilities. |
+| **`seccompProfile`**       | Restricts system calls. |
+
+---
