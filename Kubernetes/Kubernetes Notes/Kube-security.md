@@ -1378,3 +1378,260 @@ kubectl describe pod secure-pod
 | **`seccompProfile`**       | Restricts system calls. |
 
 ---
+
+## Overview Network Policies
+Kubernetes **Network Policies** control **ingress (incoming)** and **egress (outgoing)** traffic for pods. They **restrict** communication between pods, namespaces, or external networks.
+
+**Default Behavior:**  
+If no NetworkPolicy is applied, all pods **can** communicate freely.
+
+---
+
+## 1. **Key Concepts**
+| Term | Description |
+|------|-------------|
+| **Ingress** | Controls incoming traffic to pods. |
+| **Egress** | Controls outgoing traffic from pods. |
+| **Pod Selector** | Defines which pods the policy applies to. |
+| **Namespace Selector** | Restricts traffic between namespaces. |
+| **IP Block** | Restricts access to/from specific IP ranges. |
+
+---
+
+## 2. **Enabling Network Policies**
+Network policies require a **CNI (Container Network Interface)** that supports them, such as:
+✅ Calico  
+✅ Cilium  
+✅ WeaveNet  
+✅ Kube-router  
+
+To check if your cluster supports network policies:
+```sh
+kubectl get pods -n kube-system
+```
+Look for **CNI-related pods** like `calico-node` or `cilium-agent`.
+
+---
+
+## 3. **Deny All Traffic (Default Deny)**
+To **isolate** a pod by **blocking all traffic**, use:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all
+  namespace: default
+spec:
+  podSelector: {} # Applies to all pods
+  policyTypes:
+    - Ingress
+    - Egress
+```
+
+🔹 This policy blocks **all ingress and egress traffic** for pods in the `default` namespace.
+
+---
+
+## 4. **Allow Ingress from Specific Pods**
+To allow traffic **only from a specific pod label**:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-app
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+```
+✅ **Allows traffic to `backend` pods only from `frontend` pods.**  
+❌ All other traffic is blocked.
+
+---
+
+## 5. **Allow Traffic from a Specific Namespace**
+To allow ingress **only from a specific namespace**:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-namespace
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              project: frontend
+```
+✅ **Allows traffic from any pod in a namespace labeled `project=frontend`.**  
+❌ Blocks traffic from all other namespaces.
+
+---
+
+## 6. **Allow Traffic from a Specific IP Block**
+To allow ingress **only from a specific CIDR (IP range):**
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ip-range
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 192.168.1.0/24
+```
+✅ **Allows access only from `192.168.1.0 - 192.168.1.255`.**  
+❌ Blocks traffic from all other IPs.
+
+---
+
+## 7. **Allow Only Specific Ports**
+To allow traffic **only on a specific port (e.g., 80):**
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-port-80
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: web
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 80
+```
+✅ **Allows traffic to `web` pods from `frontend` pods, only on port 80.**  
+❌ Other traffic is denied.
+
+---
+
+## 8. **Egress Rules: Restrict Outbound Traffic**
+To allow a pod to communicate **only with external API servers (e.g., 8.8.8.8)**:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-external-api
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 8.8.8.8/32
+```
+✅ **Allows `backend` pods to send requests only to `8.8.8.8`.**  
+❌ All other egress traffic is blocked.
+
+---
+
+## 9. **Combining Ingress & Egress**
+To allow **both incoming and outgoing** traffic between two services:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-between-apps
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: database
+```
+✅ **Allows traffic from `frontend` to `backend` (ingress).**  
+✅ **Allows `backend` to send data to `database` (egress).**  
+❌ Other traffic is blocked.
+
+---
+
+## 10. **Check Network Policies**
+### **List All Policies in a Namespace**
+```sh
+kubectl get networkpolicy -n default
+```
+
+### **Describe a Network Policy**
+```sh
+kubectl describe networkpolicy allow-from-app -n default
+```
+
+### **Check Effective Network Policies on a Pod**
+```sh
+kubectl get pod mypod -o yaml
+```
+
+---
+
+## **Best Practices**
+✅ **Apply a `Deny All` policy first and allow only necessary traffic.**  
+✅ **Use pod selectors to scope policies instead of broad rules.**  
+✅ **Limit external access using IP-based restrictions.**  
+✅ **Test policies before applying them in production.**  
+✅ **Ensure your CNI supports Network Policies.**  
+
+---
+
+## Summary
+| Policy Type | Description |
+|-------------|-------------|
+| **Deny All Traffic** | Blocks all ingress and egress traffic. |
+| **Allow Specific Pods** | Allows traffic between selected pods. |
+| **Namespace Restrictions** | Controls inter-namespace communication. |
+| **IP-Based Policies** | Allows/denies traffic from specific IP ranges. |
+| **Port-Based Policies** | Restricts access to specific ports. |
+| **Egress Rules** | Controls outgoing traffic. |
+
+---
