@@ -796,3 +796,167 @@ kube-apiserver --authorization-mode=AlwaysAllow
 - **Use `kubectl auth can-i` to troubleshoot authorization issues.**
 - **Service accounts should have the minimum required permissions.**
 - **Webhook authorization is useful for external policy enforcement.**
+
+## Overview Kubernetes Service Accounts
+A **Service Account** in Kubernetes is used by **pods** to authenticate against the Kubernetes API. By default, each pod uses the `default` service account in its namespace unless a different one is specified.
+
+### **Key Features**
+- Used by **pods** to interact with the Kubernetes API.
+- Associated with **secrets** for authentication.
+- Can be linked to **RBAC roles** for fine-grained access control.
+
+---
+
+## 1. **Listing Service Accounts**
+
+### **List All Service Accounts in a Namespace**
+```sh
+kubectl get serviceaccounts -n default
+```
+
+### **View Details of a Specific Service Account**
+```sh
+kubectl describe serviceaccount my-sa -n default
+```
+
+---
+
+## 2. **Creating a Service Account**
+
+### **Using `kubectl create`**
+```sh
+kubectl create serviceaccount my-sa
+```
+
+### **Using a YAML Manifest**
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-sa
+  namespace: default
+```
+
+```sh
+kubectl apply -f my-sa.yaml
+```
+
+---
+
+## 3. **Assigning a Service Account to a Pod**
+
+By default, a pod uses the `default` service account. To specify a different service account:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  serviceAccountName: my-sa
+  containers:
+    - name: my-container
+      image: nginx
+```
+
+```sh
+kubectl apply -f my-pod.yaml
+```
+
+---
+
+## 4. **Binding a Service Account to RBAC Roles**
+
+### **Create a Role**
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+```
+
+### **Bind the Role to the Service Account**
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-reader-binding
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: my-sa
+    namespace: default
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+```
+
+```sh
+kubectl apply -f role.yaml
+kubectl apply -f rolebinding.yaml
+```
+
+---
+
+## 5. **Retrieving the Token of a Service Account**
+Service accounts are associated with secrets that contain authentication tokens.
+
+### **Get the Secret Name**
+```sh
+kubectl get secret -n default | grep my-sa
+```
+
+### **Retrieve the Token**
+```sh
+kubectl get secret <secret-name> -o jsonpath="{.data.token}" | base64 --decode
+```
+
+---
+
+## 6. **Using a Service Account Outside the Cluster**
+To authenticate an external application using a service account:
+
+1. **Extract the token** using the above method.
+2. **Set the token in the `kubeconfig` file**:
+
+```yaml
+apiVersion: v1
+kind: Config
+clusters:
+  - name: my-cluster
+    cluster:
+      server: https://my-cluster-api-server:6443
+      certificate-authority-data: <BASE64_CA_CERT>
+users:
+  - name: my-sa
+    user:
+      token: <TOKEN>
+contexts:
+  - name: my-sa-context
+    context:
+      cluster: my-cluster
+      user: my-sa
+      namespace: default
+current-context: my-sa-context
+```
+
+---
+
+## 7. **Deleting a Service Account**
+```sh
+kubectl delete serviceaccount my-sa
+```
+
+---
+
+## Important Notes
+- **Pods inherit permissions from the assigned service account.**
+- **Avoid using the default service account for security reasons.**
+- **Always bind service accounts to RBAC roles to limit access.**
+- **Use service accounts for applications that need to interact with the Kubernetes API.**
