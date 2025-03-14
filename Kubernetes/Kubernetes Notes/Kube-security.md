@@ -960,3 +960,206 @@ kubectl delete serviceaccount my-sa
 - **Avoid using the default service account for security reasons.**
 - **Always bind service accounts to RBAC roles to limit access.**
 - **Use service accounts for applications that need to interact with the Kubernetes API.**
+
+## Overview Kubernetes Image Security
+Kubernetes **image security** ensures that container images used in pods are **trusted**, **verified**, and **free from vulnerabilities**. It involves techniques like **image signing**, **scanning**, **restricting registries**, and **pull policies**.
+
+---
+
+## 1. **Enforcing Image Pull Policies**
+Kubernetes provides pull policies to control how images are fetched.
+
+### **Available Pull Policies**
+| Policy                | Description |
+|-----------------------|-------------|
+| `Always`             | Always pulls the latest image from the registry. |
+| `IfNotPresent`       | Pulls the image only if it is not present on the node. |
+| `Never`             | Does not pull the image; must be present on the node. |
+
+### **Example Pod Using `Always` Pull Policy**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-pod
+spec:
+  containers:
+    - name: my-container
+      image: myregistry.com/myimage:latest
+      imagePullPolicy: Always
+```
+
+---
+
+## 2. **Using Private Image Registries**
+To pull images from a **private registry**, Kubernetes needs authentication.
+
+### **Creating a Secret for a Private Registry**
+```sh
+kubectl create secret docker-registry my-registry-secret \
+  --docker-server=myregistry.com \
+  --docker-username=myuser \
+  --docker-password=mypassword \
+  --docker-email=myemail@example.com
+```
+
+### **Using the Secret in a Pod**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: private-registry-pod
+spec:
+  imagePullSecrets:
+    - name: my-registry-secret
+  containers:
+    - name: my-container
+      image: myregistry.com/private-image:latest
+```
+
+---
+
+## 3. **Scanning Images for Vulnerabilities**
+Before deploying images, **scan for vulnerabilities** using security tools:
+
+### **Popular Image Scanners**
+- [Trivy](https://github.com/aquasecurity/trivy)
+- [Clair](https://github.com/quay/clair)
+- [Anchore](https://github.com/anchore/grype)
+
+### **Scanning an Image with Trivy**
+```sh
+trivy image myregistry.com/myimage:latest
+```
+
+---
+
+## 4. **Restricting Untrusted Image Registries**
+To prevent pulling images from untrusted sources, configure **Admission Controllers**.
+
+### **Example: Restrict to Trusted Registries**
+Use **OPA Gatekeeper** or **Kyverno** to enforce policies.
+
+#### **Kyverno Policy to Restrict Registries**
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: validate-image-registry
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Only images from myregistry.com are allowed."
+        pattern:
+          spec:
+            containers:
+              - image: "myregistry.com/*"
+```
+
+---
+
+## 5. **Enabling Image Signing and Verification**
+To **prevent tampered images**, use signing mechanisms like **Cosign**.
+
+### **Signing an Image with Cosign**
+```sh
+cosign sign --key cosign.key myregistry.com/myimage:latest
+```
+
+### **Verifying an Image Signature**
+```sh
+cosign verify --key cosign.pub myregistry.com/myimage:latest
+```
+
+---
+
+## 6. **Enforcing Non-Root Users in Containers**
+Running containers as **root** increases security risks.
+
+### **Example Pod with Non-Root User**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-pod
+spec:
+  securityContext:
+    runAsUser: 1000
+    runAsNonRoot: true
+  containers:
+    - name: secure-container
+      image: myregistry.com/myimage:latest
+      securityContext:
+        allowPrivilegeEscalation: false
+```
+
+---
+
+## 7. **Preventing Privileged Containers**
+A privileged container can access the host system. Avoid them for security.
+
+### **Deny Privileged Containers Using Admission Control**
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-privileged-containers
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: deny-privileged-containers
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Privileged containers are not allowed."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  privileged: "false"
+```
+
+---
+
+## 8. **Enforcing Image Policies Using Admission Controllers**
+Use **Admission Controllers** to validate image sources and configurations.
+
+### **Enable PodSecurity Admission**
+```sh
+kubectl label namespace default pod-security.kubernetes.io/enforce=restricted
+```
+
+---
+
+## 9. **Best Practices**
+✅ Use **trusted image registries** (Docker Hub, AWS ECR, GCR, etc.).  
+✅ Enable **image scanning** before deploying images.  
+✅ Use **`IfNotPresent` or `Never`** pull policies when possible.  
+✅ Restrict image registries using **admission controllers**.  
+✅ Enforce **image signing** for integrity verification.  
+✅ Avoid **root users** and **privileged containers**.  
+✅ Use **network policies** to restrict image download locations.  
+
+---
+
+## Summary
+| Security Measure            | Purpose |
+|-----------------------------|----------------------------------|
+| **Pull Policies**           | Controls when images are fetched |
+| **Private Registry Secrets** | Authenticates against private registries |
+| **Image Scanning**          | Detects vulnerabilities before deployment |
+| **Restrict Registries**     | Prevents pulling from untrusted sources |
+| **Image Signing**           | Ensures image integrity |
+| **Run as Non-Root**         | Prevents privilege escalation |
+| **Deny Privileged Mode**    | Blocks containers with host access |
+| **Admission Controllers**   | Enforces security policies |
+
+---
