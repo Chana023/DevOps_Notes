@@ -598,3 +598,201 @@ kubectl explain pod --api-version=v1
 - **Core API objects do not have a group (`apiVersion: v1`).**
 - **API groups are versioned (`v1`, `v1beta1`) to support upgrades.**
 - **Use `kubectl api-resources` to list all available objects and groups.**
+
+## Overview Kubernetes Authorization
+Kubernetes **authorization** controls what actions users, service accounts, and processes can perform within the cluster. It ensures **RBAC (Role-Based Access Control)**, **ABAC (Attribute-Based Access Control)**, and other mechanisms are enforced.
+
+### **Types of Authorization in Kubernetes**
+1. **RBAC (Role-Based Access Control)** – Assigns roles to users, groups, or service accounts.
+2. **ABAC (Attribute-Based Access Control)** – Uses policies for granular access (less common).
+3. **Webhook Authorization** – External authorization through API calls.
+4. **Node Authorization** – Restricts node permissions to necessary actions.
+
+---
+
+## 1. **Role-Based Access Control (RBAC)**
+
+### **View Current Authorization Mode**
+```sh
+kubectl api-versions | grep authorization
+```
+
+### **List Roles and RoleBindings**
+```sh
+kubectl get roles,rolebindings --all-namespaces
+kubectl get clusterroles,clusterrolebindings
+```
+
+### **Example: Creating a Role and RoleBinding**
+
+#### **Define a Role (Namespace-Specific)**
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+```
+
+#### **Bind the Role to a User**
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-reader-binding
+  namespace: default
+subjects:
+  - kind: User
+    name: alice
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+```
+
+#### **Apply the RBAC Configurations**
+```sh
+kubectl apply -f role.yaml
+kubectl apply -f rolebinding.yaml
+```
+
+---
+
+## 2. **Cluster-Wide Authorization (ClusterRole & ClusterRoleBinding)**
+
+### **Example: Granting Read-Only Access to All Namespaces**
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-pod-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+```
+
+#### **Bind ClusterRole to a User**
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-pod-reader-binding
+subjects:
+  - kind: User
+    name: bob
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-pod-reader
+  apiGroup: rbac.authorization.k8s.io
+```
+
+#### **Apply the ClusterRole Configurations**
+```sh
+kubectl apply -f clusterrole.yaml
+kubectl apply -f clusterrolebinding.yaml
+```
+
+---
+
+## 3. **Verifying User Permissions**
+
+### **Check If a User Has Permissions**
+```sh
+kubectl auth can-i get pods --as alice
+kubectl auth can-i delete deployments --as bob --namespace=dev
+```
+
+### **Get Detailed User Access**
+```sh
+kubectl auth can-i --list
+```
+
+---
+
+## 4. **Service Account Authorization**
+
+### **Create a Service Account**
+```sh
+kubectl create serviceaccount my-service-account
+```
+
+### **Bind Service Account to a Role**
+```sh
+kubectl create rolebinding sa-pod-reader-binding --role=pod-reader --serviceaccount=default:my-service-account
+```
+
+### **Use a Service Account in a Pod**
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-using-sa
+spec:
+  serviceAccountName: my-service-account
+  containers:
+    - name: busybox
+      image: busybox
+      command: ["sleep", "3600"]
+```
+
+---
+
+## 5. **Webhook Authorization**
+- **Custom external authorization**
+- Kubernetes calls an external API to determine access.
+
+### **Enable Webhook Authorization in API Server**
+```sh
+kube-apiserver --authorization-mode=Webhook
+```
+
+### **Example Webhook Policy (External API)**
+```json
+{
+  "apiVersion": "authorization.k8s.io/v1",
+  "kind": "SubjectAccessReview",
+  "spec": {
+    "user": "alice",
+    "resourceAttributes": {
+      "namespace": "default",
+      "verb": "get",
+      "resource": "pods"
+    }
+  }
+}
+```
+
+---
+
+## 6. **Node Authorization**
+- **Used for kubelet permissions** (e.g., scheduling workloads on nodes).
+- Allows nodes to manage their assigned pods.
+
+### **Enable Node Authorization in API Server**
+```sh
+kube-apiserver --authorization-mode=Node
+```
+
+---
+
+## 7. **Disabling Authorization (Not Recommended)**
+- Only use for testing purposes.
+
+```sh
+kube-apiserver --authorization-mode=AlwaysAllow
+```
+
+---
+
+## Important Notes
+- **RBAC is the most common authorization method in Kubernetes.**
+- **Use `kubectl auth can-i` to troubleshoot authorization issues.**
+- **Service accounts should have the minimum required permissions.**
+- **Webhook authorization is useful for external policy enforcement.**
