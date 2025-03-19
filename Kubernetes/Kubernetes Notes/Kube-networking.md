@@ -266,10 +266,7 @@ kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
 
 ---
 
-
-# CNI (Container Network Interface) Plugins
-
-## Overview
+## CNI (Container Network Interface) Plugins
 Container Network Interface (**CNI**) plugins enable **pod-to-pod** communication in Kubernetes.  
 They implement networking features like **IP allocation, routing, and network policies**.
 
@@ -506,3 +503,212 @@ kubectl logs -n kube-system -l k8s-app=calico-node
 - **Monitor networking** using logs & metrics.
 
 ---
+
+## Ingress Overview
+**Ingress** is a Kubernetes API object that manages external access to services inside a cluster, typically via **HTTP/HTTPS**.  
+It provides **routing rules**, **TLS termination**, and **load balancing**.
+
+Unlike **NodePort** and **LoadBalancer**, Ingress offers more control over routing.
+
+---
+
+## 1. **How Ingress Works**
+- Requires an **Ingress Controller** (e.g., NGINX, Traefik, HAProxy).
+- Routes **external traffic** to **internal services**.
+- Supports **host-based and path-based routing**.
+
+🔹 **Check if an Ingress Controller is installed:**
+```sh
+kubectl get pods -n kube-system | grep ingress
+```
+
+---
+
+## 2. **Installing an Ingress Controller**
+### **NGINX Ingress Controller**
+🔹 **Install using Helm:**
+```sh
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm install my-ingress ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
+```
+
+🔹 **Verify installation:**
+```sh
+kubectl get pods -n ingress-nginx
+```
+
+---
+
+## 3. **Basic Ingress Example**
+🔹 **Sample Ingress YAML:**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /app1
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80
+      - path: /app2
+        pathType: Prefix
+        backend:
+          service:
+            name: app2-service
+            port:
+              number: 80
+```
+
+🔹 **Apply the Ingress resource:**
+```sh
+kubectl apply -f my-ingress.yaml
+```
+
+---
+
+## 4. **Types of Ingress Rules**
+### **1️⃣ Host-Based Routing**
+Route traffic based on the **domain name**.
+```yaml
+spec:
+  rules:
+  - host: app1.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80
+```
+
+### **2️⃣ Path-Based Routing**
+Route traffic based on **URL paths**.
+```yaml
+spec:
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /app1
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-service
+            port:
+              number: 80
+```
+
+---
+
+## 5. **TLS Termination (HTTPS)**
+To secure traffic using HTTPS, use a **TLS certificate**.
+
+🔹 **Sample Ingress with TLS:**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: secure-ingress
+spec:
+  tls:
+  - hosts:
+    - example.com
+    secretName: example-tls
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-service
+            port:
+              number: 443
+```
+
+🔹 **Create a TLS secret using a certificate & key:**
+```sh
+kubectl create secret tls example-tls --cert=cert.pem --key=key.pem
+```
+
+---
+
+## 6. **Annotations for Custom Behavior**
+Annotations extend Ingress functionality.
+
+| Annotation | Description |
+|------------|------------|
+| `nginx.ingress.kubernetes.io/rewrite-target` | Modifies the request URL before forwarding. |
+| `nginx.ingress.kubernetes.io/ssl-redirect` | Forces HTTPS redirect. |
+| `nginx.ingress.kubernetes.io/auth-type` | Enables basic authentication. |
+| `nginx.ingress.kubernetes.io/load-balance` | Sets load-balancing algorithm. |
+
+🔹 **Example: Force HTTPS Redirect**
+```yaml
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+```
+
+---
+
+## 7. **Troubleshooting Ingress**
+🔹 **Check Ingress resources:**
+```sh
+kubectl get ingress
+kubectl describe ingress my-ingress
+```
+
+🔹 **Check Ingress Controller logs (NGINX example):**
+```sh
+kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
+```
+
+🔹 **Test if Ingress is working (from inside cluster):**
+```sh
+curl -H "Host: example.com" http://<INGRESS-IP>
+```
+
+---
+
+## 8. **Comparing Service Exposure Methods**
+| Method       | Load Balancing | External Access | Use Case |
+|-------------|---------------|----------------|----------|
+| ClusterIP   | ❌ No | ❌ No | Internal-only services |
+| NodePort    | ✅ Basic | ✅ Yes (Node's IP & Port) | Small-scale deployments |
+| LoadBalancer | ✅ Yes | ✅ Yes (Cloud LB) | Cloud environments (AWS, GCP, Azure) |
+| Ingress     | ✅ Yes | ✅ Yes (Domain-based routing) | Advanced HTTP(S) routing |
+
+---
+
+## 9. **Best Practices**
+✅ **Use Ingress for complex routing (multiple services under one domain).**  
+✅ **Enable TLS to secure traffic.**  
+✅ **Use annotations to customize behavior.**  
+✅ **Monitor Ingress logs for debugging.**  
+✅ **Consider using cert-manager for automated TLS certificate management.**  
+
+---
+
+## **Summary**
+- **Ingress** manages external access to services via **HTTP/HTTPS**.
+- **Requires an Ingress Controller** (NGINX, Traefik, HAProxy).
+- Supports **host-based and path-based routing**.
+- **TLS termination** secures traffic using HTTPS.
+- **Annotations** customize behavior.
+- **Troubleshoot with `kubectl describe ingress` & logs**.
+
