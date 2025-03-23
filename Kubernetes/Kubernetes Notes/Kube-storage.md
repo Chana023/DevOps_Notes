@@ -1,9 +1,6 @@
 # Kubernetes Storage
 
-```markdown
-# Kubernetes Volumes
-
-## Overview
+## Overview Kubernetes Volumes
 Kubernetes **Volumes** provide persistent or ephemeral storage for pods. Unlike container storage, volumes **persist** across container restarts within a pod.
 
 ---
@@ -310,4 +307,3 @@ kubectl describe pod pvc-example
 | `azureDisk` | Persistent storage in Azure. |
 
 ---
-```
